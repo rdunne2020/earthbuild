@@ -10,6 +10,7 @@ import (
 
 	"github.com/EarthBuild/earthbuild/logbus"
 	"github.com/EarthBuild/earthbuild/logbus/formatter"
+	"github.com/EarthBuild/earthbuild/logbus/profiler"
 	"github.com/EarthBuild/earthbuild/logbus/solvermon"
 	"github.com/EarthBuild/earthbuild/logbus/writersub"
 	"github.com/EarthBuild/earthbuild/logstream"
@@ -28,6 +29,20 @@ type BusSetup struct {
 	BusDebugWriter   *writersub.RawWriterSub
 	InitialManifest  *logstream.RunManifest
 	execStatsTracker *execstatssummary.Tracker
+	profile          *profiler.Recorder
+}
+
+// EnableProfile records raw build events for export when the bus setup closes.
+func (bs *BusSetup) EnableProfile(path string) error {
+	r, err := profiler.New(path, bs.InitialManifest)
+	if err != nil {
+		return err
+	}
+
+	bs.profile = r
+	bs.Bus.AddRawSubscriber(r)
+
+	return nil
 }
 
 // New creates a new BusSetup.
@@ -130,6 +145,15 @@ func (bs *BusSetup) DumpManifestToFile(path string) error {
 // Close the bus setup & gather all errors.
 func (bs *BusSetup) Close() error {
 	var err error
+
+	if bs.profile != nil {
+		bs.Bus.RemoveRawSubscriber(bs.profile)
+
+		profileErr := bs.profile.Close()
+		if profileErr != nil {
+			err = errors.Join(err, fmt.Errorf("build profile: %w", profileErr))
+		}
+	}
 
 	if bs.execStatsTracker != nil {
 		trackerErr := bs.execStatsTracker.Close()

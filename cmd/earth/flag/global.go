@@ -53,6 +53,7 @@ type Global struct {
 	LocalSkipDB                string
 	LogstreamDebugFile         string
 	LogstreamDebugManifestFile string
+	Profile                    string
 	GitLFSPullInclude          string
 	BuildkitHost               string
 	BuildkitdImage             string
@@ -226,6 +227,12 @@ func (global *Global) RootFlags(installName string, bkImage string) []cli.Flag {
 			Usage:       "Enable log streaming debugging output to a file",
 			Destination: &global.LogstreamDebugFile,
 			Hidden:      true, // Internal.
+		},
+		&cli.StringFlag{
+			Name:        "profile",
+			Sources:     EarthEnvVars("PROFILE"),
+			Usage:       "Export build timings, dependency links, and command logs to a JSON file",
+			Destination: &global.Profile,
 		},
 		&cli.StringFlag{
 			Name:        "logstream-debug-manifest-file",

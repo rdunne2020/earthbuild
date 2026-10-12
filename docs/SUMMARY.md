@@ -29,6 +29,7 @@
     - [Authenticating Git and image registries](guides/auth.md)
     - [Integration Testing](guides/integration.md)
     - [Debugging techniques](guides/debugging.md)
+    - [Profiling builds](guides/profiling.md)
     - [Podman](guides/podman.md)
     - [Apple Container](guides/apple-container.md)
     - Configuring registries
