@@ -190,6 +190,14 @@ Also available as an env var setting: `EARTH_VERBOSE=1`.
 
 Enables verbose logging.
 
+##### `--profile <path>`
+
+Also available as an env var setting: `EARTH_PROFILE=<path>`.
+
+Exports a JSON build profile with recorded run, target, and command durations,
+dependency links, and raw logs grouped by command ID. See
+[Profiling builds](../guides/profiling.md) for usage and the export format.
+
 ##### `--git-username <git-user>` (**deprecated**)
 
 Also available as an env var setting: `GIT_USERNAME=<git-user>`.

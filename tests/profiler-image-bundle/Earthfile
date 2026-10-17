@@ -1,0 +1,45 @@
+VERSION 0.8
+
+ARG --global DIND_IMAGE=earthbuild/dind:alpine-3.24-docker-29.8.2-r0
+FROM $DIND_IMAGE
+RUN apk add --no-cache bash coreutils jq tar zstd
+WORKDIR /work
+COPY bundle.sh verify.sh ./
+
+# note is intentionally tiny and shared by several targets.
+note:
+    FROM alpine:3.24.2
+    RUN printf 'EarthBuild profiler COPY probe\n' > /note.txt
+    SAVE ARTIFACT /note.txt
+
+# bundle saves all images in a single Docker archive before compressing it.
+bundle:
+    ARG IMAGE_A=docker.io/library/alpine:3.24.2
+    ARG IMAGE_B=docker.io/library/busybox:1.37.0
+    ARG IMAGE_C=docker.io/library/redis:7.4-alpine
+    ARG HOLD_SECONDS=15
+    ARG ZSTD_LEVEL=3
+    ARG ZSTD_THREADS=2
+    COPY +note/note.txt /work/probe-before.txt
+    WITH DOCKER --pull $IMAGE_A --pull $IMAGE_B --pull $IMAGE_C
+        RUN bash ./bundle.sh "$HOLD_SECONDS" "$ZSTD_LEVEL" "$ZSTD_THREADS" "$IMAGE_A" "$IMAGE_B" "$IMAGE_C"
+    END
+    COPY +note/note.txt /out/probe-after.txt
+    SAVE ARTIFACT /out
+
+# all copies the shared small file before and after collecting the bundle.
+# Verification is a separate RUN so its duration can be compared with COPY.
+all:
+    ARG IMAGE_A=docker.io/library/alpine:3.24.2
+    ARG IMAGE_B=docker.io/library/busybox:1.37.0
+    ARG IMAGE_C=docker.io/library/redis:7.4-alpine
+    ARG HOLD_SECONDS=15
+    ARG ZSTD_LEVEL=3
+    ARG ZSTD_THREADS=2
+    COPY +note/note.txt /work/root-probe-before.txt
+    COPY (+bundle/out \
+        --IMAGE_A="$IMAGE_A" --IMAGE_B="$IMAGE_B" --IMAGE_C="$IMAGE_C" \
+        --HOLD_SECONDS="$HOLD_SECONDS" --ZSTD_LEVEL="$ZSTD_LEVEL" --ZSTD_THREADS="$ZSTD_THREADS") /out
+    COPY +note/note.txt /out/root-probe-after.txt
+    RUN bash ./verify.sh /out
+    SAVE ARTIFACT /out

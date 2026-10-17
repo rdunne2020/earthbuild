@@ -18,10 +18,26 @@ import (
 
 // SolverMonitor is a buildkit solver monitor.
 type SolverMonitor struct {
+	observer VertexObserver
 	b        *logbus.Bus
 	digests  map[digest.Digest]string  // digest -> cmdID
 	vertices map[string]*vertexMonitor // cmdID -> vertexMonitor
 	mu       sync.Mutex
+}
+
+// VertexObserver receives solver snapshots before command lifecycle timestamps
+// are merged. Implementations must consume the vertex synchronously, without
+// retaining it or calling back into the solver monitor.
+type VertexObserver interface {
+	ObserveVertex(commandID string, vertex *client.Vertex)
+}
+
+// SetVertexObserver installs an optional observer, or removes it with nil.
+func (sm *SolverMonitor) SetVertexObserver(observer VertexObserver) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	sm.observer = observer
 }
 
 // New creates a new SolverMonitor.
@@ -144,6 +160,10 @@ func (sm *SolverMonitor) handleBuildkitStatus(status *client.SolveStatus) error 
 		}
 
 		sm.digests[vertex.Digest] = cmdID
+
+		if sm.observer != nil {
+			sm.observer.ObserveVertex(cmdID, vertex)
+		}
 
 		vm.vertex = vertex
 		if vertex.Cached {

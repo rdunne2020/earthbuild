@@ -77,6 +77,13 @@ func (app *EarthApp) before(ctx context.Context, cmd *cli.Command) (context.Cont
 
 	app.BaseCLI.SetLogbusSetup(busSetup)
 
+	if flags.Profile != "" {
+		err = busSetup.EnableProfile(flags.Profile)
+		if err != nil {
+			return ctx, fmt.Errorf("profile setup: %w", err)
+		}
+	}
+
 	if cmd.IsSet("config") {
 		app.BaseCLI.Log().Printf("loading config values from %q\n", flags.ConfigPath)
 	}
